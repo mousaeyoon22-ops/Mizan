@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/mizan_models.dart';
+import '../db/mizan_database.dart';
+import '../engine/ifrs_engine.dart';
 
 class MizanStore extends ChangeNotifier {
   static const _storageKey = 'mizan_v3_offline_ledger_v1';
@@ -15,6 +17,13 @@ class MizanStore extends ChangeNotifier {
   String currentUserEmail = 'owner@seha-pilot.local';
   String currentRole = 'OWNER — مالك المنشأة';
   WorkspaceMode mode = WorkspaceMode.easy;
+  String entityName = 'منشأة ميزان الرئيسية';
+  String bookCurrency = 'USD';
+  List<String> branches = ['الفرع الرئيسي', 'فرع التوزيع الميداني'];
+  String currentBranch = 'الفرع الرئيسي';
+  List<String> costCenters = ['عام', 'التجارة والمبيعات', 'الخدمات والمشاريع', 'التوزيع'];
+  bool isSqliteReady = false;
+  int sqliteAuditCount = 0;
 
   List<String> warehouses = [
     'المخزن الرئيسي',
@@ -94,15 +103,32 @@ class MizanStore extends ChangeNotifier {
 
   Future<void> loadFromDisk() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_storageKey);
-      if (raw == null || raw.isEmpty) return;
+      String? raw;
+      try {
+        raw = await MizanDatabase.loadStateJson();
+        isSqliteReady = true;
+        sqliteAuditCount = await MizanDatabase.auditEventCount();
+      } catch (_) {
+        isSqliteReady = false;
+      }
+      if (raw == null || raw.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        raw = prefs.getString(_storageKey);
+      }
+      if (raw == null || raw.isEmpty) {
+        notifyListeners();
+        return;
+      }
       final data = jsonDecode(raw) as Map<String, dynamic>;
       isDarkMode = data['isDarkMode'] as bool? ?? false;
       isEnglish = data['isEnglish'] as bool? ?? false;
       hideEmptyA4Rows = data['hideEmptyA4Rows'] as bool? ?? true;
       contextualChatOpen = data['contextualChatOpen'] as bool? ?? false;
       syncQueueCount = data['syncQueueCount'] as int? ?? 0;
+      entityName = data['entityName'] as String? ?? entityName;
+      bookCurrency = data['bookCurrency'] as String? ?? bookCurrency;
+      if (data['branches'] is List) { branches = (data['branches'] as List).cast<String>(); }
+      currentBranch = data['currentBranch'] as String? ?? branches.first;
       final mName = data['mode'] as String?;
       if (mName != null) {
         mode = WorkspaceMode.values.firstWhere((e) => e.name == mName, orElse: () => WorkspaceMode.easy);
@@ -134,15 +160,25 @@ class MizanStore extends ChangeNotifier {
   }
 
   Future<void> saveToDisk() async {
+    final payload = exportBackupJson();
+    try {
+      await MizanDatabase.saveStateJson(payload);
+      isSqliteReady = true;
+      sqliteAuditCount = await MizanDatabase.auditEventCount();
+    } catch (_) {}
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_storageKey, exportBackupJson());
+      await prefs.setString(_storageKey, payload);
     } catch (_) {}
   }
 
   String exportBackupJson() {
     return jsonEncode({
-      'version': '3.0.0',
+      'version': '3.2.0-stage1',
+      'entityName': entityName,
+      'bookCurrency': bookCurrency,
+      'branches': branches,
+      'currentBranch': currentBranch,
       'exportedAt': DateTime.now().toIso8601String(),
       'isDarkMode': isDarkMode,
       'isEnglish': isEnglish,
@@ -185,6 +221,84 @@ class MizanStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Stage 1: True Zero-Start for a brand-new real business (0.00 balances, no demo debts)
+  Future<void> startFreshEntity({
+    required String newEntityName,
+    required String mainBranch,
+    required String currency,
+  }) async {
+    entityName = newEntityName.trim().isEmpty ? 'منشأتي الجديدة' : newEntityName.trim();
+    bookCurrency = currency;
+    branches = [mainBranch.trim().isEmpty ? 'الفرع الرئيسي' : mainBranch.trim()];
+    currentBranch = branches.first;
+    warehouses = ['المخزن الرئيسي'];
+    accounts = [
+      MizanAccount(id: 'cash_main', code: '1110', name: 'الصندوق الرئيسي ($currency)', type: AccountType.cashbox, currency: currency, balance: 0.0),
+      MizanAccount(id: 'walkin_cash', code: '1120', name: 'عميل نقدي مباشر', type: AccountType.customer, currency: currency, balance: 0.0),
+    ];
+    items = [];
+    invoices = [];
+    ledger = [];
+    gates = [];
+    syncQueueCount = 0;
+    try {
+      await MizanDatabase.clearAll();
+      await MizanDatabase.recordEffectiveSetting('entity_initialized', '$entityName|$currency');
+      await MizanDatabase.appendAuditEvent(
+        entityName: entityName,
+        branchName: currentBranch,
+        action: 'START_FRESH_ENTITY_ZERO',
+        refNo: 'INIT-000',
+        sha256Hash: MizanSha256.digestHex('INIT|$entityName|$currency'),
+      );
+    } catch (_) {}
+    await saveToDisk();
+    notifyListeners();
+  }
+
+  /// Stage 1: Immutable Reversing Entry (never deletes ledger history)
+  void reverseLedgerEntry(LedgerEntry original) {
+    final revNo = 'REV-${original.refNo}';
+    // Reverse account balance effects if accounts exist
+    for (final a in accounts) {
+      if (a.id == original.debitAccountId) a.balance -= original.amount;
+      if (a.id == original.creditAccountId) a.balance += original.amount;
+    }
+    final rev = LedgerEntry(
+      id: 'rev_${DateTime.now().millisecondsSinceEpoch}',
+      date: DateTime.now(),
+      refNo: revNo,
+      description: 'قيد عكسي لتصحيح ${original.refNo}: ${original.description}',
+      debitAccountId: original.creditAccountId,
+      debitAccountName: original.creditAccountName,
+      creditAccountId: original.debitAccountId,
+      creditAccountName: original.debitAccountName,
+      amount: original.amount,
+      currency: original.currency,
+      category: 'REVERSAL',
+    );
+    ledger.insert(0, rev);
+    syncQueueCount++;
+    MizanDatabase.appendAuditEvent(
+      entityName: entityName,
+      branchName: currentBranch,
+      action: 'REVERSE_ENTRY',
+      refNo: revNo,
+      sha256Hash: MizanSha256.digestHex('$revNo|${original.amount}'),
+    ).catchError((_) {});
+    saveToDisk();
+    notifyListeners();
+  }
+
+  void addBranch(String name) {
+    final clean = name.trim();
+    if (clean.isEmpty || branches.contains(clean)) return;
+    branches.add(clean);
+    MizanDatabase.recordEffectiveSetting('branch_added', clean).catchError((_) {});
+    saveToDisk();
+    notifyListeners();
+  }
+
   // --- Computed KPIs ---
   double get totalCashUsd => accounts
       .where((a) => a.type == AccountType.cashbox && a.currency == 'USD')
@@ -200,7 +314,7 @@ class MizanStore extends ChangeNotifier {
 
   double get totalSalesRevenue => invoices
       .where((i) => i.type == InvoiceType.sale)
-      .fold(600.0, (s, i) => s + i.netTotal) -
+      .fold(0.0, (s, i) => s + i.netTotal) -
       invoices.where((i) => i.type == InvoiceType.saleReturn).fold(0.0, (s, i) => s + i.netTotal);
 
   double get totalExpenses => accounts
@@ -208,7 +322,7 @@ class MizanStore extends ChangeNotifier {
       .fold(0.0, (s, a) => s + a.balance);
 
   double get totalEstimatedProfit =>
-      invoices.where((i) => i.type == InvoiceType.sale).fold(210.0, (s, i) => s + i.estimatedProfit) -
+      invoices.where((i) => i.type == InvoiceType.sale).fold(0.0, (s, i) => s + i.estimatedProfit) -
       totalExpenses;
 
   double get totalInventoryValue =>

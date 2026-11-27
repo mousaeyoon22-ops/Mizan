@@ -12,6 +12,51 @@ class MoreScreen extends StatelessWidget {
   final MizanStore store;
   const MoreScreen({super.key, required this.store});
 
+  void _showFreshEntityDialog(BuildContext context) {
+    final entCtrl = TextEditingController(text: store.entityName);
+    final brCtrl = TextEditingController(text: 'الفرع الرئيسي');
+    String curr = store.bookCurrency;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('بدء منشأة جديدة (تصفير كامل 0.00)'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('سيتم مسح جميع البيانات التجريبية والمديونيات لتبدأ برصيد 0.00 نظيف تماماً.', style: TextStyle(fontSize: 12.5, color: MizanColors.muted)),
+              const SizedBox(height: 12),
+              TextField(controller: entCtrl, decoration: const InputDecoration(labelText: 'اسم المنشأة / المتجر')),
+              const SizedBox(height: 10),
+              TextField(controller: brCtrl, decoration: const InputDecoration(labelText: 'اسم الفرع الرئيسي')),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: curr,
+                decoration: const InputDecoration(labelText: 'عملة الدفاتر الأساسية'),
+                items: const ['USD', 'SAR', 'YER'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                onChanged: (v) => setS(() => curr = v ?? 'USD'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            FilledButton(
+              onPressed: () async {
+                await store.startFreshEntity(newEntityName: entCtrl.text, mainBranch: brCtrl.text, currency: curr);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تصفير النظام بنجاح (0.00) وتهيئة المنشأة الجديدة')));
+                }
+              },
+              child: const Text('تأكيد التصفير 0.00'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showBackupDialog(BuildContext context) {
     final jsonStr = store.exportBackupJson();
     final importCtrl = TextEditingController();
@@ -198,8 +243,22 @@ class MoreScreen extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.storage_rounded, color: MizanColors.success),
+                  title: Text('محرك SQLite المحلي: ${store.isSqliteReady ? "نشط ومتصل" : "احتياطي"}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text('المنشأة: ${store.entityName} • الفرع: ${store.currentBranch} • سجل التدقيق: ${store.sqliteAuditCount}', style: const TextStyle(fontSize: 12)),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.cleaning_services_rounded, color: MizanColors.primary),
+                  title: const Text('بدء منشأة جديدة (تصفير كامل 0.00)', style: TextStyle(fontWeight: FontWeight.w800, color: MizanColors.primary)),
+                  subtitle: const Text('حذف المديونيات التجريبية والبدء من الصفر ببياناتك الحقيقية', style: TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _showFreshEntityDialog(context),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.restart_alt_rounded, color: MizanColors.danger),
-                  title: const Text('إعادة ضبط البيانات التجريبية', style: TextStyle(fontWeight: FontWeight.w700, color: MizanColors.danger)),
+                  title: const Text('إعادة تحميل بيانات تجريبية للاختبار', style: TextStyle(fontWeight: FontWeight.w700, color: MizanColors.danger)),
                   onTap: () async {
                     await store.resetDemoData();
                     if (context.mounted) {

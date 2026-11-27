@@ -133,7 +133,20 @@ class _VouchersScreenState extends State<VouchersScreen> {
                       const SizedBox(height: 4),
                       Text(e.description, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                       const SizedBox(height: 4),
-                      Text('مدين: ${e.debitAccountName}  |  دائن: ${e.creditAccountName}', style: const TextStyle(fontSize: 11.5, color: MizanColors.muted)),
+                      Row(
+                        children: [
+                          Expanded(child: Text('مدين: ${e.debitAccountName}  |  دائن: ${e.creditAccountName}', style: const TextStyle(fontSize: 11.5, color: MizanColors.muted))),
+                          if (e.category != 'REVERSAL')
+                            TextButton(
+                              onPressed: () {
+                                widget.store.reverseLedgerEntry(e);
+                                setState(() {});
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم إنشاء قيد عكسي لـ ${e.refNo} دون حذف السجل الأصلي')));
+                              },
+                              child: const Text('قيد عكسي', style: TextStyle(fontSize: 12, color: MizanColors.accent, fontWeight: FontWeight.w700)),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

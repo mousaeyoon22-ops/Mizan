@@ -184,9 +184,9 @@ class IfrsEngine {
     final tbVar = _round4(sumDr - sumCr);
 
     // 2. Income Statement (IFRS 15: VAT excluded from revenue; IAS 2: COGS separated)
-    double grossSales = 600.0; // Opening seeded revenue
+    double grossSales = 0.0;
     double salesReturns = 0.0;
-    double cogs = 390.0; // Opening seeded COGS
+    double cogs = 0.0;
     double vatPayable = 0.0;
 
     for (final inv in store.invoices) {

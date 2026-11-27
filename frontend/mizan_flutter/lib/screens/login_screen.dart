@@ -64,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 14),
                         const Text(
-                          'ميزان v3.0',
+                          'ميزان v3.2',
                           style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 4),
