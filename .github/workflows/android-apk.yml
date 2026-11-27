@@ -1,0 +1,41 @@
+name: Build Mizan Android APK
+
+on:
+  push:
+    branches: [mizan-android-build]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.3'
+
+      - name: Prepare Android and build debug APK
+        working-directory: frontend/mizan_flutter
+        run: |
+          if [ ! -d android ]; then
+            template_dir="$(mktemp -d)"
+            flutter create --no-pub --platforms=android \
+              --org com.mizan --project-name mizan_app "$template_dir"
+            cp -a "$template_dir/android" .
+          fi
+          flutter pub get
+          flutter build apk --debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mizan-android-debug
+          path: frontend/mizan_flutter/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error

@@ -1,0 +1,7 @@
+# Untouched Original Component Archives — SHA-256 Preservation Manifest
+# Recorded UTC: 2026-11-24T19:10:06.070259+00:00
+
+cfcda3416f4e5b21117680a6dbbf7f0b8fbe1b911cc8155e2a095800cddd47d6  Mizan_Enterprise_NET8_v1.0.zip  (41672 bytes)
+c93e0634697b9f75f7c968293a249528917d1fce68fbcab2934392d060501e08  Mizan_Flutter_Client_v1.0.zip  (29844 bytes)
+87316563dc4890bf3ff054d8e68fb81b7d009300486699a8400dc64e2ebcfd16  Mizan_Feature_Governance_v1.1.zip  (18535 bytes)
+c39e33e51fb1ea69c9e21822b7ba1ec4fac1f487d27551d38704ea99f93667fd  Mizan_FX_And_Translation_v1.2.zip  (19460 bytes)

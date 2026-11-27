@@ -1,0 +1,61 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mizan_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-mizan_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/postgres/001_init_mizan_schema.sql:/docker-entrypoint-initdb.d/001_init_mizan_schema.sql:ro
+      - ./database/postgres/002_feature_flags_governance.sql:/docker-entrypoint-initdb.d/002_feature_flags_governance.sql:ro
+      - ./database/postgres/003_fx_ias21_and_translation.sql:/docker-entrypoint-initdb.d/003_fx_ias21_and_translation.sql:ro
+      - ./database/postgres/004_peak_performance_indexes.sql:/docker-entrypoint-initdb.d/004_peak_performance_indexes.sql:ro
+      - ./database/postgres/005_security_rls_and_base_currency_hardening.sql:/docker-entrypoint-initdb.d/005_security_rls_and_base_currency_hardening.sql:ro
+      - ./database/postgres/006_pos_terminals_shifts_and_variants.sql:/docker-entrypoint-initdb.d/006_pos_terminals_shifts_and_variants.sql:ro
+      - ./database/postgres/007_voice_commands_and_accessibility.sql:/docker-entrypoint-initdb.d/007_voice_commands_and_accessibility.sql:ro
+      - ./database/postgres/008_workspace_experience_modes.sql:/docker-entrypoint-initdb.d/008_workspace_experience_modes.sql:ro
+      - ./database/postgres/009_auth_rls_enforcement_and_city_pilot_ops.sql:/docker-entrypoint-initdb.d/009_auth_rls_enforcement_and_city_pilot_ops.sql:ro
+      - ./database/postgres/010_rls_nullif_uuid_safety.sql:/docker-entrypoint-initdb.d/010_rls_nullif_uuid_safety.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mizan_admin} -d ${POSTGRES_DB:-mizan_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mizan-api:
+    build:
+      context: ./backend
+      dockerfile: src/Mizan.Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Connects strictly via NON-SUPERUSER NOBYPASSRLS role `mizan_runtime` (Fixes DEF-304)
+      MIZAN_POSTGRES_CONNECTION: "Host=postgres;Database=${POSTGRES_DB:-mizan_prod};Username=mizan_runtime;Password=${POSTGRES_RUNTIME_PASSWORD:?Set POSTGRES_RUNTIME_PASSWORD in .env}"
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env}
+      JWT_ISSUER: ${JWT_ISSUER:-mizan.auth}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-mizan.api}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      mizan-api:
+        condition: service_healthy
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+
+volumes:
+  pgdata:

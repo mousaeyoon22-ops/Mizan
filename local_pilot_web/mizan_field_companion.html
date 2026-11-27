@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ميزان v2.1 — رفيق التشغيل الميداني المحلي (أوفلاين + طباعة A4 نظيفة)</title>
+  <style>
+    :root { --primary:#0f766e; --bg:#f8fafc; --card:#ffffff; --border:#cbd5e1; --text:#0f172a; }
+    * { box-sizing:border-box; font-family:system-ui,-apple-system,Segoe UI,Tahoma,sans-serif; }
+    body { margin:0; background:var(--bg); color:var(--text); padding:12px; }
+    .container { max-width:920px; margin:auto; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px; }
+    h1,h2 { margin:0 0 8px; color:var(--primary); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; }
+    input,select,button { padding:10px; border-radius:8px; border:1px solid var(--border); font-size:14px; width:100%; }
+    button { background:var(--primary); color:#fff; border:none; font-weight:700; cursor:pointer; }
+    button.sec { background:#334155; }
+    table { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+    th,td { border:1px solid var(--border); padding:6px; text-align:right; }
+    th { background:#f1f5f9; }
+    .kpi { display:flex; flex-wrap:wrap; gap:10px; font-weight:700; }
+    .kpi div { background:#ecfdf5; border:1px solid #99f6e4; padding:8px 12px; border-radius:8px; }
+    @media print {
+      @page { size:A4; margin:12mm; }
+      .no-print { display:none !important; }
+      body { background:#fff; padding:0; }
+      .card { border:none; padding:0; margin-bottom:10px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1 id="orgHeader">محطة مياه صحة — التقرير المالي اليومي (ميزان v2.1)</h1>
+    <div id="reportMeta"></div>
+    <div class="kpi" id="kpiBar" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="card no-print">
+    <h2>1. تسجيل حركة بيع / آجل / عهدة</h2>
+    <div class="grid">
+      <input id="cust" placeholder="اسم العميل أو الموزع" />
+      <input id="item" placeholder="الصنف (مثلاً عبوة 20 لتر)" value="عبوة مياه 20 لتر" />
+      <input id="qty" type="number" step="any" placeholder="الكمية" />
+      <input id="price" type="number" step="any" placeholder="سعر الوحدة" />
+      <select id="payMode">
+        <option value="CASH">نقداً (كاش)</option>
+        <option value="CREDIT">آجل (ذمة)</option>
+      </select>
+      <input id="tanksOut" type="number" step="any" placeholder="عبوات عهدة (اختياري)" />
+    </div>
+    <div class="grid" style="margin-top:8px;">
+      <button onclick="addSale()">إضافة الحركة (أوفلاين)</button>
+      <button class="sec" onclick="window.print()">طباعة تقرير A4 نظيف</button>
+      <button class="sec" onclick="exportJson()">تصدير JSON للمزامنة مع الخادم</button>
+    </div>
+  </div>
+
+  <div class="card no-print">
+    <h2>2. قراءة العداد والمصروفات اليومية</h2>
+    <div class="grid">
+      <input id="meterName" placeholder="اسم العداد" value="عداد التعبئة الرئيسي" />
+      <input id="meterOpen" type="number" step="any" placeholder="القراءة السابقة" />
+      <input id="meterClose" type="number" step="any" placeholder="القراءة الحالية" />
+      <button onclick="saveMeter()">حفظ قراءة العداد</button>
+    </div>
+    <div class="grid" style="margin-top:8px;">
+      <input id="expCat" placeholder="بند المصروف (وقود / صيانة)" />
+      <input id="expAmt" type="number" step="any" placeholder="المبلغ" />
+      <button onclick="addExpense()">إضافة مصروف</button>
+    </div>
+  </div>
+
+  <div class="card" id="salesSection" style="display:none;">
+    <h2>حركات المبيعات المدخلة</h2>
+    <table><thead><tr><th>العميل</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>الدفع</th><th>عهدة عبوات</th></tr></thead><tbody id="salesBody"></tbody></table>
+  </div>
+
+  <div class="card" id="meterSection" style="display:none;">
+    <h2>مطابقة قراءات العدادات</h2>
+    <table><thead><tr><th>العداد</th><th>السابق</th><th>الحالي</th><th>المسحوب</th><th>فرق المطابقة مع المبيعات</th></tr></thead><tbody id="meterBody"></tbody></table>
+  </div>
+
+  <div class="card" id="expSection" style="display:none;">
+    <h2>المصروفات اليومية</h2>
+    <table><thead><tr><th>البند</th><th>المبلغ</th></tr></thead><tbody id="expBody"></tbody></table>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'mizan_v21_local_pilot_state';
+let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"date":"","sales":[],"meters":[],"expenses":[]}');
+if (!state.date) state.date = new Date().toISOString().slice(0, 10);
+
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); render(); }
+function num(id) { const v = parseFloat(document.getElementById(id).value); return Number.isFinite(v) && v > 0 ? v : 0; }
+
+function addSale() {
+  const cust = document.getElementById('cust').value.trim();
+  const item = document.getElementById('item').value.trim();
+  const qty = num('qty'), price = num('price'), tanks = num('tanksOut');
+  const payMode = document.getElementById('payMode').value;
+  if (!cust || qty <= 0 || price <= 0) return alert('يرجى إدخال اسم العميل والكمية والسعر.');
+  state.sales.push({ idempotency_key: 'FLD-' + Date.now(), cust, item, qty, price, total: +(qty * price).toFixed(4), payMode, tanks });
+  document.getElementById('cust').value = ''; document.getElementById('qty').value = ''; document.getElementById('tanksOut').value = '';
+  saveState();
+}
+
+function saveMeter() {
+  const name = document.getElementById('meterName').value.trim();
+  const open = num('meterOpen'), close = num('meterClose');
+  if (!name || close < open || close <= 0) return alert('القراءة الحالية يجب أن تكون أكبر أو تساوي السابقة.');
+  state.meters.push({ name, open, close, delta: +(close - open).toFixed(4) });
+  saveState();
+}
+
+function addExpense() {
+  const cat = document.getElementById('expCat').value.trim(), amt = num('expAmt');
+  if (!cat || amt <= 0) return alert('يرجى إدخال بند المصروف والمبلغ.');
+  state.expenses.push({ cat, amt: +amt.toFixed(4) });
+  document.getElementById('expCat').value = ''; document.getElementById('expAmt').value = '';
+  saveState();
+}
+
+function exportJson() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `mizan_daily_${state.date}.json`; a.click();
+}
+
+function render() {
+  // Dynamically hide empty sections & render strictly entered rows (zero blank rows on A4 print!)
+  const validSales = state.sales.filter(s => s.qty > 0 && s.total > 0 && s.cust);
+  const validExps = state.expenses.filter(e => e.amt > 0 && e.cat);
+  const validMeters = state.meters.filter(m => m.name && m.close > 0);
+
+  const totalSales = validSales.reduce((a, b) => a + b.total, 0);
+  const totalCash = validSales.filter(s => s.payMode === 'CASH').reduce((a, b) => a + b.total, 0);
+  const totalCredit = validSales.filter(s => s.payMode === 'CREDIT').reduce((a, b) => a + b.total, 0);
+  const totalQty = validSales.reduce((a, b) => a + b.qty, 0);
+  const totalExp = validExps.reduce((a, b) => a + b.amt, 0);
+
+  document.getElementById('reportMeta').textContent = `التاريخ: ${state.date} | وضع الأوفلاين المحلي | الصفوف المدخلة فقط`;
+  document.getElementById('kpiBar').innerHTML = `
+    <div>إجمالي المبيعات: ${totalSales.toFixed(2)}</div>
+    <div>نقدي: ${totalCash.toFixed(2)}</div>
+    <div>آجل: ${totalCredit.toFixed(2)}</div>
+    <div>المصروفات: ${totalExp.toFixed(2)}</div>
+    <div>صافي النقد: ${(totalCash - totalExp).toFixed(2)}</div>`;
+
+  document.getElementById('salesSection').style.display = validSales.length ? 'block' : 'none';
+  document.getElementById('salesBody').innerHTML = validSales.map(s =>
+    `<tr><td>${s.cust}</td><td>${s.item}</td><td>${s.qty}</td><td>${s.price.toFixed(2)}</td><td>${s.total.toFixed(2)}</td><td>${s.payMode === 'CASH' ? 'كاش' : 'آجل'}</td><td>${s.tanks || '-'}</td></tr>`
+  ).join('');
+
+  document.getElementById('meterSection').style.display = validMeters.length ? 'block' : 'none';
+  document.getElementById('meterBody').innerHTML = validMeters.map(m =>
+    `<tr><td>${m.name}</td><td>${m.open}</td><td>${m.close}</td><td>${m.delta}</td><td>${(m.delta - totalQty).toFixed(2)}</td></tr>`
+  ).join('');
+
+  document.getElementById('expSection').style.display = validExps.length ? 'block' : 'none';
+  document.getElementById('expBody').innerHTML = validExps.map(e => `<tr><td>${e.cat}</td><td>${e.amt.toFixed(2)}</td></tr>`).join('');
+}
+render();
+</script>
+</body>
+</html>

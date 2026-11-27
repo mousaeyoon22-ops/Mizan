@@ -1,0 +1,59 @@
+name: Mizan Production Ready v2.2 CI/CD Verification
+on:
+  push:
+    branches: [main, release/*]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-invariants-parity-and-stress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Run Full Accounting, Security, Offline, Governance, FX, POS, Voice, Workspace & EF-PG Parity Suites
+        run: python3 verification/run_all_monorepo_tests.py
+      - name: Run Peak-Hour Concurrency & Index Stress Benchmark
+        run: python3 load_testing/run_peak_stress_benchmark.py
+
+  dotnet-backend-and-postgres-rls:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mizan_ci
+          POSTGRES_USER: mizan_admin
+          POSTGRES_PASSWORD: ci_secret_password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '8.0.x' }
+      - name: Apply All 10 PostgreSQL Migrations (001->010) & Run Live NOBYPASSRLS Isolation Test
+        env: { PGPASSWORD: ci_secret_password }
+        run: |
+          for f in database/postgres/0*.sql; do
+            echo "Applying $f ..."
+            psql -h localhost -U mizan_admin -d mizan_ci -v ON_ERROR_STOP=1 -f "$f"
+          done
+          echo "Running live NOBYPASSRLS & NULLIF UUID isolation proof..."
+          psql -h localhost -U mizan_admin -d mizan_ci -v ON_ERROR_STOP=1 -f database/tests/test_pg_rls_and_invariants.sql
+      - name: Restore, Build & Test .NET 8 Solution
+        run: dotnet test backend/Mizan.sln --configuration Release --verbosity normal
+
+  flutter-client-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.22.0' }
+      - name: Flutter Pub Get, Analyze & Test
+        working-directory: frontend/mizan_flutter
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test

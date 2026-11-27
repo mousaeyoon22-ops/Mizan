@@ -1,0 +1,61 @@
+{
+  "executed_at_utc": "2026-11-24T21:26:29.514328+00:00",
+  "environment": "Python 3 + SQLite WAL Multi-Thread Stress Engine (8 vCPUs)",
+  "note_on_scope": "Measures relational schema index impact, lock contention, idempotency storm, hot-SKU oversell race, and zero-variance invariants locally. Live PostgreSQL 16 MVCC, .NET 8 Kestrel, SignalR, and Nginx TLS 1.3 must be benchmarked via included k6_peak_storm.js and pgbench_ledger_workload.sql.",
+  "bench_1_ledger_scale_and_index_impact": {
+    "entries_inserted": 10000,
+    "lines_inserted": 20000,
+    "organizations": 50,
+    "bulk_insert_tps": 65705.7,
+    "unindexed_lookup_mean_ms": 1.717,
+    "unindexed_lookup_p99_ms": 2.345,
+    "indexed_lookup_mean_ms": 0.021,
+    "indexed_lookup_p99_ms": 0.038,
+    "index_speedup_factor": 81.6,
+    "index_build_ms": 36.93
+  },
+  "bench_2_concurrent_peak_fx_storm": {
+    "concurrent_threads": 32,
+    "transactions_attempted": 3200,
+    "errors": 0,
+    "lock_retries": 0,
+    "elapsed_sec": 1.176,
+    "sustained_tps": 2721.1,
+    "latency_p50_ms": 0.113,
+    "latency_p95_ms": 0.276,
+    "latency_p99_ms": 81.699,
+    "total_entries_in_db": 13200,
+    "total_lines_in_db": 29600,
+    "unbalanced_organizations": 0,
+    "zero_variance_verified": true
+  },
+  "bench_3_idempotency_replay_storm": {
+    "simultaneous_duplicate_requests": 400,
+    "posted_count": 1,
+    "replayed_safely_count": 399,
+    "errors": 0,
+    "db_rows_created": 1,
+    "latency_p99_ms": 54.389,
+    "duplicate_prevention_verified": true
+  },
+  "bench_4_hot_sku_oversell_race": {
+    "concurrent_buyers": 500,
+    "initial_stock_units": 100,
+    "orders_fulfilled": 100,
+    "cleanly_rejected_out_of_stock": 400,
+    "final_stock_units": 0.0,
+    "final_row_version": 101,
+    "elapsed_sec": 0.14,
+    "latency_p99_ms": 80.084,
+    "zero_oversell_verified": true
+  },
+  "bench_5_offline_outbox_burst_with_concurrent_reads": {
+    "outbox_writes_queued": 2000,
+    "write_tps": 8466.5,
+    "write_p99_ms": 0.393,
+    "concurrent_reads_served": 10594,
+    "read_p95_ms": 0.112,
+    "read_p99_ms": 0.198,
+    "zero_data_loss_verified": true
+  }
+}

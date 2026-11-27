@@ -1,0 +1,727 @@
+{
+  "release_version": "Mizan_Production_Ready_v2.2",
+  "generated_at_utc": "2026-11-24T21:26:32.290487+00:00",
+  "full_verification_suite": {
+    "release_version": "Mizan_Production_Ready_v2.2",
+    "executed_at_utc": "2026-11-24T21:26:29.401733+00:00",
+    "total_tests": 83,
+    "passed": 83,
+    "failed": 0,
+    "suite_summaries": [
+      {
+        "suite": "01. Core Backend Accounting & Security (v1.0)",
+        "script": "01_run_core_accounting_tests.py",
+        "passed": 13,
+        "failed": 0,
+        "total": 13
+      },
+      {
+        "suite": "02. Flutter Offline SQLite & Anti-Fraud (v1.0)",
+        "script": "02_run_flutter_offline_tests.py",
+        "passed": 7,
+        "failed": 0,
+        "total": 7
+      },
+      {
+        "suite": "03. Feature Governance & Operational Preferences (v1.1)",
+        "script": "03_run_feature_governance_tests.py",
+        "passed": 7,
+        "failed": 0,
+        "total": 7
+      },
+      {
+        "suite": "04. IAS 21 FX Engine & Instant Translation (v1.2)",
+        "script": "04_run_fx_and_translation_tests.py",
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      },
+      {
+        "suite": "05. Multi-Cashier POS, Blind Z-Reports & Variants (v1.5)",
+        "script": "05_run_pos_v15_tests.py",
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      },
+      {
+        "suite": "06. Voice Command Operations & Inclusive Accessibility (v1.6)",
+        "script": "06_run_voice_a11y_v16_tests.py",
+        "passed": 12,
+        "failed": 0,
+        "total": 12
+      },
+      {
+        "suite": "07. Adaptive Workspace Experience Modes (v1.7)",
+        "script": "07_run_workspace_modes_v17_tests.py",
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      },
+      {
+        "suite": "08. EF Core <-> PostgreSQL Schema, Enum & RLS Parity Audit (v2.2)",
+        "script": "08_efcore_pg_schema_parity_audit.py",
+        "passed": 4,
+        "failed": 0,
+        "total": 4
+      },
+      {
+        "suite": "09. Production Ready v2.2 Auth, RLS, Snake-Case, Zero-Stubs & Static Lint",
+        "script": "run_all_monorepo_tests.py",
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      }
+    ],
+    "non_executed_environment_blocked_checks": [
+      "dotnet build && dotnet test backend/Mizan.sln (dotnet SDK not installed in sandbox)",
+      "flutter pub get && flutter analyze && flutter test && flutter build apk (Flutter SDK not installed in sandbox)",
+      "Live PostgreSQL 16 migrations 001->010 & mizan_runtime NOBYPASSRLS enforcement test (psql/Docker not installed in sandbox)",
+      "Live Nginx TLS 1.3 & k6 1,000-VU network storm (nginx/k6 not installed in sandbox)",
+      "On-device physical hardware validation (TalkBack, VoiceOver, Voice Access, QR scanner, ESC/POS printer)"
+    ],
+    "results": [
+      {
+        "test_id": "ACC-01",
+        "category": "Accounting",
+        "title": "Reject unbalanced double-entry journal",
+        "status": "PASS",
+        "evidence": "DOUBLE_ENTRY_VIOLATION: Dr=100.0000 != Cr=99.9900"
+      },
+      {
+        "test_id": "ACC-02",
+        "category": "IFRS 15",
+        "title": "Advance payment creates Contract Liability and ZERO Revenue before delivery",
+        "status": "PASS",
+        "evidence": "Revenue=0.0000, ContractLiab=-500.0000"
+      },
+      {
+        "test_id": "ACC-03",
+        "category": "Wedge Cycle / IAS 2",
+        "title": "Full Water Distributor Cycle (Purchase->Advance->Delivery->Return) yields exact AR, Inventory, Profit & 0.0000 Variance",
+        "status": "PASS",
+        "evidence": "AR=600.0000, Inv=450.0000, NetRev=1100.0000, NetCOGS=450.0000, GrossProfit=650.0000, TrialBalanceVariance=0.0000"
+      },
+      {
+        "test_id": "ACC-04",
+        "category": "IAS 2",
+        "title": "Weighted Average Cost precision check (120 units @ 4.5000 = 540.0000)",
+        "status": "PASS",
+        "evidence": "WA_UnitCost=4.5000, WA_COGS_120=540.00000000"
+      },
+      {
+        "test_id": "ACC-05",
+        "category": "Multi-Currency",
+        "title": "Exact Decimal(18,4) FX conversion without float rounding error",
+        "status": "PASS",
+        "evidence": "123.45 EUR * 1.0837 = 133.7828 USD"
+      },
+      {
+        "test_id": "SEC-01",
+        "category": "Audit & Immutability",
+        "title": "Database triggers block UPDATE and DELETE on posted journal lines",
+        "status": "PASS",
+        "evidence": "update_blocked=True, delete_blocked=True"
+      },
+      {
+        "test_id": "SEC-02",
+        "category": "Idempotency",
+        "title": "Duplicate idempotency_key returns replay and prevents double posting",
+        "status": "PASS",
+        "evidence": "replay={'status': 'IDEMPOTENT_REPLAY', 'entry_id': 'a70bc3b38e6006ad'}, CashBalance=500.0000"
+      },
+      {
+        "test_id": "SEC-03",
+        "category": "Security (BOLA/IDOR)",
+        "title": "Cross-tenant journal line injection strictly blocked",
+        "status": "PASS",
+        "evidence": "bola_blocked=True"
+      },
+      {
+        "test_id": "SEC-04",
+        "category": "Security (SQLi)",
+        "title": "Parameterized queries neutralize SQL injection payload",
+        "status": "PASS",
+        "evidence": "Payload='CASH' OR '1'='1' returned safe balance 0.0000"
+      },
+      {
+        "test_id": "GATE-01",
+        "category": "Trade Gates",
+        "title": "Active pairing alone cannot dispatch documents without bilateral Gate approval",
+        "status": "PASS",
+        "evidence": "pairing_active=True, gate_approved_both=False, can_send=False"
+      },
+      {
+        "test_id": "GATE-02",
+        "category": "Reconciliation",
+        "title": "Inter-Org SHA-256 document match & 0.0000 reconciliation variance",
+        "status": "PASS",
+        "evidence": "HashMatch=True, SellerAR=600.0000, BuyerAP=600.0000, Diff=0.0000"
+      },
+      {
+        "test_id": "P2P-01",
+        "category": "Anti-Fraud",
+        "title": "Perishable dispute blocks gallery upload & enforces strict 30-min window",
+        "status": "PASS",
+        "evidence": "live_within_30m=True, gallery_blocked=True, late_blocked=True"
+      },
+      {
+        "test_id": "P2P-02",
+        "category": "Blind Rating",
+        "title": "Single rating remains hidden on Day 1 and auto-publishes after Day 7",
+        "status": "PASS",
+        "evidence": "published_day1=False, published_day8=True"
+      },
+      {
+        "test_id": "FLT-01",
+        "category": "MoneyMinor Precision",
+        "title": "Exact integer minor-unit FX conversion matches backend Decimal(18,4)",
+        "status": "PASS",
+        "evidence": "123.4500 EUR -> 133.7828 USD (minor=1337828)"
+      },
+      {
+        "test_id": "FLT-02",
+        "category": "SQLite Schema",
+        "title": "Offline local_items table blocks negative monetary price via CHECK constraint",
+        "status": "PASS",
+        "evidence": "negative_price_blocked=True"
+      },
+      {
+        "test_id": "FLT-03",
+        "category": "Offline Outbox",
+        "title": "Duplicate offline idempotency_key strictly blocked at SQLite level",
+        "status": "PASS",
+        "evidence": "dup_blocked=True, sha256=c70168cde45fe3fc..."
+      },
+      {
+        "test_id": "FLT-04",
+        "category": "Sync Worker",
+        "title": "Outbox preserves CONFLICT rows without silent loss while advancing synced rows",
+        "status": "PASS",
+        "evidence": "statuses={'ob-1': 'SYNCED', 'ob-conflict': 'CONFLICT'}"
+      },
+      {
+        "test_id": "FLT-05",
+        "category": "Contextual Chat",
+        "title": "SQLite trigger enforces read-only archive lock once transaction closes",
+        "status": "PASS",
+        "evidence": "chat_lock_enforced=True"
+      },
+      {
+        "test_id": "FLT-06",
+        "category": "Anti-Fraud Guard",
+        "title": "Dispute guard blocks gallery upload and enforces strict 30-min perishable timer",
+        "status": "PASS",
+        "evidence": "gallery=(False, 'GALLERY_UPLOAD_BLOCKED'), live_20m=(True, 'ELIGIBLE'), live_31m=(False, 'DISPUTE_WINDOW_EXPIRED')"
+      },
+      {
+        "test_id": "FLT-07",
+        "category": "API Contract",
+        "title": "Offline outbox endpoints strictly align with .NET 8 OpenAPI v1 routes",
+        "status": "PASS",
+        "evidence": "outbox_endpoints=['/api/v1/p2p/orders', '/api/v1/ledger/deliveries']"
+      },
+      {
+        "test_id": "GOV-01",
+        "category": "Phase 1 Defaults",
+        "title": "Exactly 6 core features ON and 10 optional/Phase 2-3 features OFF by default",
+        "status": "PASS",
+        "evidence": "Active=6, Inactive=10"
+      },
+      {
+        "test_id": "GOV-02",
+        "category": "Core Protection",
+        "title": "Database trigger blocks disabling immutable CORE_DOUBLE_ENTRY_LEDGER",
+        "status": "PASS",
+        "evidence": "blocked_core=True"
+      },
+      {
+        "test_id": "GOV-03",
+        "category": "Platform Gate",
+        "title": "Phase 2/3 extensions (PSP, Wallet, ERP) cannot be bypassed by tenants while platform-locked",
+        "status": "PASS",
+        "evidence": "blocked_psp=True, blocked_wallet=True, blocked_erp=True"
+      },
+      {
+        "test_id": "GOV-04",
+        "category": "Org Preferences",
+        "title": "Org owner toggles Phase-1 optional feature cleanly with full audit trail",
+        "status": "PASS",
+        "evidence": "before=False, on=True, off=False, audit_entries=2"
+      },
+      {
+        "test_id": "GOV-05",
+        "category": "Dependency Graph",
+        "title": "Enabling PSP in Phase 2 enforces KYC Tier 2-4 prerequisite before activation",
+        "status": "PASS",
+        "evidence": "blocked_without_kyc=True, enabled_after_kyc=True"
+      },
+      {
+        "test_id": "GOV-06",
+        "category": "Kill-Switch",
+        "title": "Platform kill-switch on prerequisite cascades immediately to dependent modules",
+        "status": "PASS",
+        "evidence": "psp_cascaded_off=True"
+      },
+      {
+        "test_id": "GOV-07",
+        "category": "Tenant Isolation",
+        "title": "Organization preference toggle is strictly isolated per tenant",
+        "status": "PASS",
+        "evidence": "OrgA=True, OrgB=False"
+      },
+      {
+        "test_id": "FX-01",
+        "category": "IAS 21 AR Gain",
+        "title": "AR foreign settlement closes AR to 0.0000 and posts +50.0000 SAR FX Gain",
+        "status": "PASS",
+        "evidence": "AR=0.0000, FX_GAIN=50.0000, Var=0.0000"
+      },
+      {
+        "test_id": "FX-02",
+        "category": "IAS 21 AR Loss",
+        "title": "AR foreign settlement posts 30.0000 USD FX Loss with 0.0000 variance",
+        "status": "PASS",
+        "evidence": "AR=0.0000, FX_LOSS=30.0000, Var=0.0000"
+      },
+      {
+        "test_id": "FX-03",
+        "category": "IAS 21 AP Loss",
+        "title": "AP settlement in YER closes AP to 0.0000 and posts 10,000.0000 YER FX Loss",
+        "status": "PASS",
+        "evidence": "AP=0.0000, FX_LOSS=10000.0000, Var=0.0000"
+      },
+      {
+        "test_id": "FX-04",
+        "category": "Direct Exchange (مصارفة)",
+        "title": "Direct exchange 1,000 USD -> 3,720 SAR books 30.0000 SAR exchange spread expense with 0.0000 variance",
+        "status": "PASS",
+        "evidence": "CashSAR=3720.0000, ExchExpense=30.0000, Var=0.0000"
+      },
+      {
+        "test_id": "FX-05",
+        "category": "Cross-Currency Gain",
+        "title": "Cross-currency exchange 1,000 EUR -> 1,100 USD posts +20.0000 USD exchange gain",
+        "status": "PASS",
+        "evidence": "ExchGain=20.0000, Var=0.0000"
+      },
+      {
+        "test_id": "FX-06",
+        "category": "IAS 21 Revaluation",
+        "title": "Period-end revaluation posts exact +75.0000 USD unrealized FX gain with 0.0000 variance",
+        "status": "PASS",
+        "evidence": "RevalDiff=75.00000000, Var=0.0000"
+      },
+      {
+        "test_id": "FX-07",
+        "category": "DB Invariants",
+        "title": "Base-currency imbalance rejected & posted FX lines immutable",
+        "status": "PASS",
+        "evidence": "unbal_blocked=True, mut_blocked=True"
+      },
+      {
+        "test_id": "FX-08",
+        "category": "FX Idempotency",
+        "title": "Duplicate FX exchange voucher replay does not double-book cash or spread",
+        "status": "PASS",
+        "evidence": "replay={'status': 'IDEMPOTENT_REPLAY', 'entry_id': 'f1339950e90d15fc'}, ExchExpense=30.0000"
+      },
+      {
+        "test_id": "TRN-01",
+        "category": "Translation Governance",
+        "title": "Instant translation strictly gated by INSTANT_CROSS_BORDER_TRANSLATION flag",
+        "status": "PASS",
+        "evidence": "blocked_when_off=True, allowed_when_on=True"
+      },
+      {
+        "test_id": "TRN-02",
+        "category": "Translation Cache",
+        "title": "SHA-256 cache prevents duplicate provider calls & same-lang bypasses API",
+        "status": "PASS",
+        "evidence": "translated='20L Purified Water Bottle', hit_2nd=True, same_lang_bypass=True, provider_calls=1"
+      },
+      {
+        "test_id": "POS-01",
+        "category": "Operational Preferences",
+        "title": "All 3 POS/Variant flags default OFF in Phase 1 & enforce shift->POS dependency",
+        "status": "PASS",
+        "evidence": "default_off=True, dep_blocked=True, enabled_in_order=True"
+      },
+      {
+        "test_id": "POS-02",
+        "category": "Shift Custody",
+        "title": "Database enforces single active OPEN shift per terminal and per cashier",
+        "status": "PASS",
+        "evidence": "dup_term_blocked=True, dup_cashier_blocked=True"
+      },
+      {
+        "test_id": "POS-03",
+        "category": "Variant Matrix",
+        "title": "Unique barcode resolves exact Size/Color variant & blocks duplicate barcodes",
+        "status": "PASS",
+        "evidence": "lookup=('SHIRT-M-BLUE', 'M', 'Blue'), dup_barcode_blocked=True"
+      },
+      {
+        "test_id": "POS-04",
+        "category": "Multi-Cashier Race",
+        "title": "10 simultaneous cashiers vs 20 variant units -> exactly 20 sold, 80 rejected, 0 oversell",
+        "status": "PASS",
+        "evidence": "sold=20, rejected=80, remaining=0.0000, row_version=21"
+      },
+      {
+        "test_id": "POS-05",
+        "category": "Blind Z-Report Shortage",
+        "title": "Shortage (-15.0000 USD) posts balanced entry & seals Z-Report with SHA-256",
+        "status": "PASS",
+        "evidence": "expected=1600.0000, counted=1585.0000, variance=-15.0000, tb_var=0"
+      },
+      {
+        "test_id": "POS-06",
+        "category": "Blind Z-Report Overage",
+        "title": "Overage (+10.0000 USD) posts balanced entry with 0.0000 trial balance variance",
+        "status": "PASS",
+        "evidence": "overage=10.0000, tb_var=0"
+      },
+      {
+        "test_id": "POS-07",
+        "category": "Z-Report Audit Lock",
+        "title": "Closed shift & Z-Report cannot be altered or deleted at DB level",
+        "status": "PASS",
+        "evidence": "update_blocked=True, delete_blocked=True"
+      },
+      {
+        "test_id": "POS-08",
+        "category": "Adaptive UI Matrix",
+        "title": "4-factor workspace resolver isolates Personal, Small Shop, Mall Cashier, Mall Owner & Driver",
+        "status": "PASS",
+        "evidence": "cashier=('touchSplitScreenPos', True, False), small_shop=('smallShopMobile', False, True), personal=('personalBudgetAndQr', False, False)"
+      },
+      {
+        "test_id": "POS-09",
+        "category": "Migration Chain 001->005",
+        "title": "New v1.5 SQLite migration 005 applies cleanly on top of v1.4 migrations 001->004",
+        "status": "PASS",
+        "evidence": "applied=['001_mizan_offline_client.sql', '002_flutter_feature_flags.sql', '003_flutter_fx_and_translation.sql', '004_flutter_peak_wal_indexes.sql', '005_flutter_pos_shifts_variants.sql'], total_tables=10"
+      },
+      {
+        "test_id": "POS-10",
+        "category": "POS Hardware ESC/POS",
+        "title": "ESC/POS thermal init, RJ11 cash-drawer kick & paper-cut byte sequences verified",
+        "status": "PASS",
+        "evidence": "bytes_len=29, hex_tail=1b700019fa1d564200"
+      },
+      {
+        "test_id": "A11Y-01",
+        "category": "WCAG 2.2 AAA Contrast",
+        "title": "High-contrast palette exceeds WCAG AAA 7:1 contrast ratio across all key pairs",
+        "status": "PASS",
+        "evidence": "primary=17.02:1, secondary=13.65:1, surface=19.8:1"
+      },
+      {
+        "test_id": "A11Y-02",
+        "category": "Disability Profiles",
+        "title": "All 5 inclusive presets satisfy visual, hearing, motor & cognitive needs",
+        "status": "PASS",
+        "evidence": "verified_presets=['BLIND_SCREEN_READER', 'LOW_VISION_HIGH_CONTRAST', 'DEAF_VISUAL_HAPTIC', 'MOTOR_HANDS_FREE_VOICE', 'COGNITIVE_SIMPLIFIED']"
+      },
+      {
+        "test_id": "A11Y-03",
+        "category": "Motor Accessibility",
+        "title": "Touch targets enforce >= 48dp standard and >= 64dp motor-assist sizing",
+        "status": "PASS",
+        "evidence": "standard=48.0dp, motor_assist=64.0dp"
+      },
+      {
+        "test_id": "A11Y-04",
+        "category": "Color-Blind & Deaf Parity",
+        "title": "Widgets enforce Semantics liveRegion, non-color icons/prefixes & haptic error alerts",
+        "status": "PASS",
+        "evidence": "verified=True"
+      },
+      {
+        "test_id": "VOC-01",
+        "category": "Bilingual Voice Parser",
+        "title": "Parses Arabic-Indic numerals, multi-currency AR/EN mutations & read-only queries",
+        "status": "PASS",
+        "evidence": "ar=('RECORD_CASH_RECEIPT', True, Decimal('750.0000'), 'SAR'), en=('CREATE_SALE_INVOICE', True, Decimal('125.5000'), 'EUR'), query=('QUERY_BALANCE', False, None, 'USD')"
+      },
+      {
+        "test_id": "VOC-02",
+        "category": "Voice Financial Safety",
+        "title": "Financial voice command enters DRAFT_AWAITING_CONFIRM and never auto-posts",
+        "status": "PASS",
+        "evidence": "intent=RECORD_CASH_RECEIPT, amount=750.0000 SAR, initial_state=DRAFT_AWAITING_CONFIRM"
+      },
+      {
+        "test_id": "VOC-03",
+        "category": "Ambiguity Guard",
+        "title": "Voice financial command missing numeric amount is rejected safely",
+        "status": "PASS",
+        "evidence": "intent=RECORD_CASH_PAYMENT, amount=None, state=REJECTED_AMBIGUOUS"
+      },
+      {
+        "test_id": "VOC-04",
+        "category": "High-Value Auth Gate",
+        "title": "Amounts >= 500 reject plain voice confirm and require PIN/Biometric",
+        "status": "PASS",
+        "evidence": "750_voice_blocked=True, 750_pin_ok=True, 120_voice_ok=True"
+      },
+      {
+        "test_id": "VOC-05",
+        "category": "Voice Audit Immutability",
+        "title": "Terminal voice audit record blocks UPDATE/DELETE and duplicate idempotency_key",
+        "status": "PASS",
+        "evidence": "upd_blk=True, del_blk=True, dup_blk=True"
+      },
+      {
+        "test_id": "VOC-06",
+        "category": "Feature Governance",
+        "title": "Accessibility core is immutable ON while Voice Operations is org-configurable OFF by default",
+        "status": "PASS",
+        "evidence": "verified_in_pg007=True"
+      },
+      {
+        "test_id": "VOC-07",
+        "category": "Migration Chain 001->006",
+        "title": "All 6 sequential Flutter SQLite migrations (v1.4+v1.5+v1.6) apply cleanly with zero collisions",
+        "status": "PASS",
+        "evidence": "applied=6, total_tables=12"
+      },
+      {
+        "test_id": "VOC-08",
+        "category": "Security (RLS)",
+        "title": "PostgreSQL Migration 007 enforces RLS on both accessibility profiles and voice audit logs",
+        "status": "PASS",
+        "evidence": "rls_enabled=True"
+      },
+      {
+        "test_id": "WSM-01",
+        "category": "Easy Mode",
+        "title": "Easy Mode uses SIMPLE_TRADE terminology, SPACIOUS density, 3 nav items & hides debit/credit/COA",
+        "status": "PASS",
+        "evidence": "term=SIMPLE_TRADE, density=SPACIOUS, cols=['date', 'party_name', 'simple_direction_label', 'amount_currency']"
+      },
+      {
+        "test_id": "WSM-02",
+        "category": "Standard Mode",
+        "title": "Standard Mode provides BALANCED terminology, COMFORTABLE density & A4 clean report widget",
+        "status": "PASS",
+        "evidence": "widgets=['cash_and_bank_boxes', 'ar_ap_summary', 'gross_profit', 'clean_a4_daily_report']"
+      },
+      {
+        "test_id": "WSM-03",
+        "category": "Professional Mode",
+        "title": "Professional Mode exposes STRICT_ACCOUNTING, COMPACT grid, COA, Base Dr/Cr, FIFO & SHA-256",
+        "status": "PASS",
+        "evidence": "cols=['entry_date', 'coa_code', 'tx_debit', 'tx_credit', 'base_debit', 'base_credit', 'audit_sha256_hash']"
+      },
+      {
+        "test_id": "WSM-04",
+        "category": "Executive Mode",
+        "title": "Executive Mode renders consolidated branch PnL, shift Z-reports & trust score KPIs",
+        "status": "PASS",
+        "evidence": "widgets=['branch_consolidated_pnl', 'all_cashiers_z_reports', 'trust_score_trend']"
+      },
+      {
+        "test_id": "WSM-05",
+        "category": "Express Field Mode",
+        "title": "Express Field Mode shows offline outbox strip & vehicle custody with spacious single-hand UI",
+        "status": "PASS",
+        "evidence": "widgets=['offline_sync_outbox_strip', 'assigned_vehicle_custody', 'quick_delivery_scan']"
+      },
+      {
+        "test_id": "WSM-06",
+        "category": "RBAC Anti-Escalation",
+        "title": "Cashier/Driver requesting Professional/Executive mode clamped & profit/ledger fields stripped",
+        "status": "PASS",
+        "evidence": "cashier_eff=STANDARD (hidden=['gross_profit']), driver_eff=EASY"
+      },
+      {
+        "test_id": "WSM-07",
+        "category": "Org Role Policy Lock",
+        "title": "Org owner lock forces Cashier to EASY mode even when requesting allowed STANDARD mode",
+        "status": "PASS",
+        "evidence": "eff=EASY, reason=ORG_POLICY_LOCKED_CASHIER"
+      },
+      {
+        "test_id": "WSM-08",
+        "category": "Accessibility Harmony",
+        "title": "v1.6 Accessibility overrides preserve 64dp touch targets & spacious layout even in Professional mode",
+        "status": "PASS",
+        "evidence": "min_dp=64, density=SPACIOUS"
+      },
+      {
+        "test_id": "WSM-09",
+        "category": "PostgreSQL 008 & RLS",
+        "title": "Migration 008 defines preference/policy tables, RLS & Feature Flag #25",
+        "status": "PASS",
+        "evidence": "verified=True"
+      },
+      {
+        "test_id": "WSM-10",
+        "category": "Migration Chain 001->007",
+        "title": "All 7 sequential SQLite migrations (v1.4+v1.5+v1.6+v1.7) succeed & CHECK blocks invalid modes",
+        "status": "PASS",
+        "evidence": "applied=7, total_tables=14, invalid_mode_blocked=True"
+      },
+      {
+        "test_id": "PAR-01",
+        "category": "EF Core <-> PG Column Parity",
+        "title": "Every mapped C# property across all 15 DbSets matches an exact PostgreSQL column (0 mismatches)",
+        "status": "PASS",
+        "evidence": "checked_entities=15, mismatches=[]"
+      },
+      {
+        "test_id": "PAR-02",
+        "category": "EF Core <-> PG Enum Parity",
+        "title": "All 15 C# enums converted via ScreamingSnakeEnumConverter match PostgreSQL CHECK constraints 100%",
+        "status": "PASS",
+        "evidence": "checked_enums=15, mismatches=[]"
+      },
+      {
+        "test_id": "PAR-03",
+        "category": "Migration 010 NULLIF RLS",
+        "title": "Migration 010 upgrades all 22 RLS tables to NULLIF-safe UUID helpers with explicit WITH CHECK",
+        "status": "PASS",
+        "evidence": "rls_tables=22, upgraded_in_010=22, with_check=22, missing=[]"
+      },
+      {
+        "test_id": "PAR-04",
+        "category": "End-to-End Wiring (DEF-403..407)",
+        "title": "Auth refresh rotation, FIFO/CreatedBy DB persistence, TradeGate/P2P/Pilot controllers, Hangfire schedule, backup scripts & Flutter API verified",
+        "status": "PASS",
+        "evidence": "verified=True"
+      },
+      {
+        "test_id": "V21-01",
+        "category": "Auth & Onboarding (DEF-301)",
+        "title": "AuthController, OrganizationsController CoA seed & PBKDF2-SHA512 100k verification",
+        "status": "PASS",
+        "evidence": "pbkdf2_ok=True, endpoints_present=True"
+      },
+      {
+        "test_id": "V21-02",
+        "category": "EF Core Mapping (DEF-302)",
+        "title": "MizanDbContext explicit snake_case ToTable & UseSnakeCaseNamingConvention wired",
+        "status": "PASS",
+        "evidence": "verified=True"
+      },
+      {
+        "test_id": "V21-03",
+        "category": "Base-Currency Integrity (DEF-303)",
+        "title": "JournalLine populates & validates BaseDebit/BaseCredit matching PG Migration 005",
+        "status": "PASS",
+        "evidence": "verified=True"
+      },
+      {
+        "test_id": "V21-04",
+        "category": "Real RLS Enforcement (DEF-304)",
+        "title": "Migration 009 creates NOBYPASSRLS mizan_runtime role, FORCE RLS on 22 tables & wired in docker-compose",
+        "status": "PASS",
+        "evidence": "force_rls_tables=23, runtime_role_wired=True"
+      },
+      {
+        "test_id": "V21-05",
+        "category": "Zero Stubs (DEF-305)",
+        "title": "Full Accounting CRUD, real PosController variant lookup & real Hangfire DB jobs implemented",
+        "status": "PASS",
+        "evidence": "zero_stubs_verified=True"
+      },
+      {
+        "test_id": "V21-06",
+        "category": "Flutter UI & DB v8 (DEF-306)",
+        "title": "NavigationBar truncation fixed, Login & A4 Preview screens added, MizanLocalDb upgraded to v8",
+        "status": "PASS",
+        "evidence": "verified=True"
+      },
+      {
+        "test_id": "V21-07",
+        "category": "SQLite 001->008 & Pilot Ops",
+        "title": "All 8 SQLite migrations execute cleanly; meter regression blocked & tank custody net = 3.0000",
+        "status": "PASS",
+        "evidence": "migrations=8, tables=16, bad_meter_blocked=True, net_custody=3.0000"
+      },
+      {
+        "test_id": "V21-08",
+        "category": "Local Pilot Kit (DEF-307/308)",
+        "title": "TLS cert script, one-command deploy script, water-station seed & offline A4 HTML companion verified",
+        "status": "PASS",
+        "evidence": "verified=True"
+      },
+      {
+        "test_id": "V21-09",
+        "category": "Whole-Repo Static Lint",
+        "title": "Zero brace mismatches across all C#/Dart files & zero broken relative Dart imports",
+        "status": "PASS",
+        "evidence": "cs_files=57, dart_files=35, brace_errors=[], import_errors=[]"
+      },
+      {
+        "test_id": "V21-10",
+        "category": "25-Flag & 10-Migration Sync",
+        "title": "All 10 PostgreSQL migrations present & all 25 feature keys synchronized across DB, C# & Flutter",
+        "status": "PASS",
+        "evidence": "pg_migrations=10, missing_keys=[]"
+      }
+    ]
+  },
+  "peak_stress_benchmark": {
+    "executed_at_utc": "2026-11-24T21:26:29.514328+00:00",
+    "environment": "Python 3 + SQLite WAL Multi-Thread Stress Engine (8 vCPUs)",
+    "note_on_scope": "Measures relational schema index impact, lock contention, idempotency storm, hot-SKU oversell race, and zero-variance invariants locally. Live PostgreSQL 16 MVCC, .NET 8 Kestrel, SignalR, and Nginx TLS 1.3 must be benchmarked via included k6_peak_storm.js and pgbench_ledger_workload.sql.",
+    "bench_1_ledger_scale_and_index_impact": {
+      "entries_inserted": 10000,
+      "lines_inserted": 20000,
+      "organizations": 50,
+      "bulk_insert_tps": 65705.7,
+      "unindexed_lookup_mean_ms": 1.717,
+      "unindexed_lookup_p99_ms": 2.345,
+      "indexed_lookup_mean_ms": 0.021,
+      "indexed_lookup_p99_ms": 0.038,
+      "index_speedup_factor": 81.6,
+      "index_build_ms": 36.93
+    },
+    "bench_2_concurrent_peak_fx_storm": {
+      "concurrent_threads": 32,
+      "transactions_attempted": 3200,
+      "errors": 0,
+      "lock_retries": 0,
+      "elapsed_sec": 1.176,
+      "sustained_tps": 2721.1,
+      "latency_p50_ms": 0.113,
+      "latency_p95_ms": 0.276,
+      "latency_p99_ms": 81.699,
+      "total_entries_in_db": 13200,
+      "total_lines_in_db": 29600,
+      "unbalanced_organizations": 0,
+      "zero_variance_verified": true
+    },
+    "bench_3_idempotency_replay_storm": {
+      "simultaneous_duplicate_requests": 400,
+      "posted_count": 1,
+      "replayed_safely_count": 399,
+      "errors": 0,
+      "db_rows_created": 1,
+      "latency_p99_ms": 54.389,
+      "duplicate_prevention_verified": true
+    },
+    "bench_4_hot_sku_oversell_race": {
+      "concurrent_buyers": 500,
+      "initial_stock_units": 100,
+      "orders_fulfilled": 100,
+      "cleanly_rejected_out_of_stock": 400,
+      "final_stock_units": 0.0,
+      "final_row_version": 101,
+      "elapsed_sec": 0.14,
+      "latency_p99_ms": 80.084,
+      "zero_oversell_verified": true
+    },
+    "bench_5_offline_outbox_burst_with_concurrent_reads": {
+      "outbox_writes_queued": 2000,
+      "write_tps": 8466.5,
+      "write_p99_ms": 0.393,
+      "concurrent_reads_served": 10594,
+      "read_p95_ms": 0.112,
+      "read_p99_ms": 0.198,
+      "zero_data_loss_verified": true
+    }
+  }
+}
