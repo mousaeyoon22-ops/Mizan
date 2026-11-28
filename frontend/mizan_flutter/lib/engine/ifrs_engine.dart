@@ -177,7 +177,7 @@ class IfrsEngine {
 
   /// Smart SMS/WhatsApp Remittance Parser (extracts amount, currency, reference, sender).
   static ParsedRemittance parseRemittanceText(String text) {
-    final amountMatch = RegExp(r'(\d[\d,\.]{1,12})').firstMatch(text);
+    final amountMatch = RegExp(r'(?:بمبلغ|مبلغ|Amount|Amt)[:\s]*(\d[\d,\.]{0,12})', caseSensitive: false).firstMatch(text) ?? RegExp(r'(\d[\d,\.]{1,12})').firstMatch(text);
     final amount = amountMatch != null
         ? double.tryParse(amountMatch.group(1)!.replaceAll(',', ''))
         : null;
