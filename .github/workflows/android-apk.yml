@@ -29,17 +29,27 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Regenerate clean Android Gradle project (minSdk 24)
+        run: |
+          rm -rf android
+          flutter create --platforms=android --org com.mizan --project-name mizan_app .
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/g' android/app/build.gradle.kts
+          elif [ -f android/app/build.gradle ]; then
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/g; s/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle
+          fi
+
       - name: Install Dart dependencies
         run: flutter pub get
 
       - name: Analyze Dart code
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      - name: Run Mizan v3.3 Unit Tests
+        run: flutter test
+
       - name: Build Split Release APKs (arm64-v8a & armeabi-v7a)
         run: flutter build apk --release --split-per-abi
-
-      - name: Build Debug APK (Universal fallback)
-        run: flutter build apk --debug
 
       - name: Upload Compact Release APKs (22-30 MB)
         uses: actions/upload-artifact@v4
@@ -48,9 +58,3 @@ jobs:
           path: |
             frontend/mizan_flutter/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
             frontend/mizan_flutter/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: mizan-android-debug
-          path: frontend/mizan_flutter/build/app/outputs/flutter-apk/app-debug.apk
