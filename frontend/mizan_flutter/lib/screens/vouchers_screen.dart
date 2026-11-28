@@ -1,149 +1,94 @@
 import 'package:flutter/material.dart';
+import '../engine/ifrs_engine.dart';
 import '../models/mizan_models.dart';
 import '../state/mizan_store.dart';
 import '../theme/mizan_theme.dart';
 import '../widgets/mizan_widgets.dart';
 
-class VouchersScreen extends StatefulWidget {
+class VouchersScreen extends StatelessWidget {
   final MizanStore store;
   const VouchersScreen({super.key, required this.store});
 
   @override
-  State<VouchersScreen> createState() => _VouchersScreenState();
-}
-
-class _VouchersScreenState extends State<VouchersScreen> {
-  VoucherType _type = VoucherType.receipt;
-  MizanAccount? _cashbox;
-  MizanAccount? _counter;
-  final _amountCtrl = TextEditingController();
-  final _noteCtrl = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    final boxes = widget.store.accounts.where((a) => a.type == AccountType.cashbox).toList();
-    if (boxes.isNotEmpty) _cashbox = boxes.first;
-    final others = widget.store.accounts.where((a) => a.id != _cashbox?.id).toList();
-    if (others.isNotEmpty) _counter = others.first;
-  }
-
-  @override
-  void dispose() {
-    _amountCtrl.dispose();
-    _noteCtrl.dispose();
-    super.dispose();
-  }
-
-  void _post() {
-    final amt = double.tryParse(_amountCtrl.text) ?? 0.0;
-    if (amt <= 0 || _cashbox == null || _counter == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل مبلغاً صحيحاً واختر الحسابين')));
-      return;
-    }
-    widget.store.postVoucher(
-      type: _type,
-      cashbox: _cashbox!,
-      counterAccount: _counter!,
-      amount: amt,
-      note: _noteCtrl.text.trim(),
-    );
-    _amountCtrl.clear();
-    _noteCtrl.clear();
-    setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم ترحيل السند والقيد المزدوج بنجاح')));
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final boxes = widget.store.accounts.where((a) => a.type == AccountType.cashbox).toList();
-    final all = widget.store.accounts;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('السندات والقيود اليومية')),
+      appBar: AppBar(
+        title: Text(store.t('nav_vouchers')),
+        actions: [
+          IconButton(
+            tooltip: 'لصق رسالة حوالة ذكي',
+            icon: const Icon(Icons.sms_outlined),
+            onPressed: () => _openRemittanceParserDialog(context),
+          ),
+        ],
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         children: [
-          SegmentedButton<VoucherType>(
-            segments: const [
-              ButtonSegment(value: VoucherType.receipt, label: Text('سند قبض')),
-              ButtonSegment(value: VoucherType.payment, label: Text('سند صرف')),
-              ButtonSegment(value: VoucherType.journal, label: Text('قيد / تحويل')),
-            ],
-            selected: {_type},
-            onSelectionChanged: (s) => setState(() => _type = s.first),
-          ),
-          const SizedBox(height: 12),
-          MizanCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DropdownButtonFormField<MizanAccount>(
-                  value: _cashbox,
-                  decoration: InputDecoration(labelText: _type == VoucherType.journal ? 'الحساب الدائن (من)' : 'الصندوق / البنك'),
-                  items: (_type == VoucherType.journal ? all : boxes)
-                      .map((a) => DropdownMenuItem(value: a, child: Text('${a.name} (${fmtMoney(a.balance, a.currency)})')))
-                      .toList(),
-                  onChanged: (v) => setState(() => _cashbox = v),
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<MizanAccount>(
-                  value: _counter,
-                  decoration: InputDecoration(labelText: _type == VoucherType.journal ? 'الحساب المدين (إلى)' : 'الحساب المقابل (عميل / مورد / مصروف)'),
-                  items: all.map((a) => DropdownMenuItem(value: a, child: Text('${a.code} • ${a.name}'))).toList(),
-                  onChanged: (v) => setState(() => _counter = v),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _amountCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'المبلغ', prefixIcon: Icon(Icons.attach_money_rounded)),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _noteCtrl,
-                  decoration: const InputDecoration(labelText: 'البيان / الملاحظة'),
-                ),
-                const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: _post,
-                  icon: const Icon(Icons.check_circle_outline_rounded),
-                  label: const Text('ترحيل السند بقيد مزدوج متوازن'),
-                ),
-              ],
+          if (store.journals.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(18),
+                child: Text('لا توجد قيود يومية بعد. اضغط «قيد مركّب جديد» أو استخدم محلل رسائل الحوالات الذكي بالأعلى.'),
+              ),
             ),
-          ),
-          const SizedBox(height: 18),
-          const Text('سجل الحركة اليومية والقيود', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          ...widget.store.ledger.map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: MizanCard(
-                  padding: const EdgeInsets.all(13),
+          ...store.journals.map((j) => Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Text(e.refNo, style: const TextStyle(fontWeight: FontWeight.w800, color: MizanColors.primary)),
-                          const Spacer(),
-                          Text(fmtMoney(e.amount, e.currency), style: const TextStyle(fontWeight: FontWeight.w800)),
+                          Expanded(
+                            child: Text('${j.refNo} — ${j.description}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                          ),
+                          MizanBadge(
+                            text: j.category,
+                            color: j.category == 'REVERSAL' ? MizanColors.accent : MizanColors.primary,
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(e.description, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
+                      ...j.lines.map((l) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              children: [
+                                Expanded(child: Text(l.accountName, style: const TextStyle(fontSize: 12.5))),
+                                Text(
+                                  l.debit > 0
+                                      ? 'مدين ${l.debit.toStringAsFixed(2)} ${l.currency}'
+                                      : 'دائن ${l.credit.toStringAsFixed(2)} ${l.currency}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: l.debit > 0 ? MizanColors.primary : MizanColors.info,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                      const Divider(height: 16),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(child: Text('مدين: ${e.debitAccountName}  |  دائن: ${e.creditAccountName}', style: const TextStyle(fontSize: 11.5, color: MizanColors.muted))),
-                          if (e.category != 'REVERSAL')
-                            TextButton(
-                              onPressed: () {
-                                widget.store.reverseLedgerEntry(e);
-                                setState(() {});
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم إنشاء قيد عكسي لـ ${e.refNo} دون حذف السجل الأصلي')));
+                          Text(
+                            'SHA-256: ${j.sha256Hash.substring(0, 12)}…',
+                            style: const TextStyle(fontSize: 11, color: MizanColors.muted),
+                          ),
+                          if (j.reversedOfId == null)
+                            TextButton.icon(
+                              onPressed: () async {
+                                final err = await store.reverseJournal(j.id);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(err ?? 'تم إنشاء قيد عكسي متوازن مع حفظ القيد الأصلي للتدقيق.')),
+                                  );
+                                }
                               },
-                              child: const Text('قيد عكسي', style: TextStyle(fontSize: 12, color: MizanColors.accent, fontWeight: FontWeight.w700)),
+                              icon: const Icon(Icons.undo_rounded, size: 16),
+                              label: Text(store.t('reverse_entry')),
                             ),
                         ],
                       ),
@@ -152,6 +97,133 @@ class _VouchersScreenState extends State<VouchersScreen> {
                 ),
               )),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openCompoundJournalDialog(context),
+        icon: const Icon(Icons.add),
+        label: const Text('قيد مركّب جديد'),
+      ),
+    );
+  }
+
+  void _openRemittanceParserDialog(BuildContext context) {
+    final smsCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('لصق رسالة الحوالة (تعبئة ذكية)'),
+        content: TextField(
+          controller: smsCtrl,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: 'مثال: تم استلام حوالة رقم 98231 بمبلغ 500 ريال سعودي من شركة النور',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(store.t('cancel'))),
+          FilledButton(
+            onPressed: () async {
+              final parsed = IfrsEngine.parseRemittanceText(smsCtrl.text);
+              Navigator.pop(ctx);
+              if (parsed.amount == null || parsed.amount! <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('لم يُعثر على مبلغ رقمي واضح في الرسالة.')),
+                );
+                return;
+              }
+              final fx = store.fxRateFor(parsed.currency);
+              final err = await store.postCompoundJournal(
+                description: 'سند قبض حوالة ${parsed.reference} من ${parsed.sender}',
+                category: 'REMITTANCE_SMS',
+                lines: [
+                  JournalLine(id: '', headerId: '', accountId: 'acc-cash', accountName: 'الصندوق الرئيسي', debit: parsed.amount!, credit: 0, currency: parsed.currency, fxRate: fx),
+                  JournalLine(id: '', headerId: '', accountId: 'acc-walkin', accountName: parsed.sender, debit: 0, credit: parsed.amount!, currency: parsed.currency, fxRate: fx),
+                ],
+              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(err ?? 'تم ترحيل سند الحوالة (${parsed.amount} ${parsed.currency}) آلياً!')),
+                );
+              }
+            },
+            child: const Text('تحليل وترحيل السند'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openCompoundJournalDialog(BuildContext context) {
+    if (store.accounts.length < 2) return;
+    final descCtrl = TextEditingController();
+    final amtCtrl = TextEditingController(text: '100');
+    String drId = store.accounts.first.id;
+    String crId = store.accounts[1].id;
+    String curr = store.bookCurrency;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: const Text('إنشاء سند / قيد يومية'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'البيان / الوصف')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: drId,
+                  decoration: const InputDecoration(labelText: 'الحساب المدين'),
+                  items: store.accounts.map((a) => DropdownMenuItem(value: a.id, child: Text('${a.code} - ${a.name}'))).toList(),
+                  onChanged: (v) => setSt(() => drId = v ?? drId),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: crId,
+                  decoration: const InputDecoration(labelText: 'الحساب الدائن'),
+                  items: store.accounts.map((a) => DropdownMenuItem(value: a.id, child: Text('${a.code} - ${a.name}'))).toList(),
+                  onChanged: (v) => setSt(() => crId = v ?? crId),
+                ),
+                const SizedBox(height: 8),
+                TextField(controller: amtCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'المبلغ')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: curr,
+                  decoration: InputDecoration(labelText: store.t('currency')),
+                  items: ['USD', 'SAR', 'YER', 'AED', 'EUR'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                  onChanged: (v) => setSt(() => curr = v ?? store.bookCurrency),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(store.t('cancel'))),
+            FilledButton(
+              onPressed: () async {
+                final amt = double.tryParse(amtCtrl.text) ?? 0;
+                final dr = store.accounts.firstWhere((a) => a.id == drId);
+                final cr = store.accounts.firstWhere((a) => a.id == crId);
+                final fx = store.fxRateFor(curr);
+                final err = await store.postCompoundJournal(
+                  description: descCtrl.text.trim().isEmpty ? 'قيد يومية مباشر' : descCtrl.text.trim(),
+                  category: 'JOURNAL',
+                  lines: [
+                    JournalLine(id: '', headerId: '', accountId: dr.id, accountName: dr.name, debit: amt, credit: 0, currency: curr, fxRate: fx),
+                    JournalLine(id: '', headerId: '', accountId: cr.id, accountName: cr.name, debit: 0, credit: amt, currency: curr, fxRate: fx),
+                  ],
+                );
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(err ?? 'تم ترحيل القيد وتوثيقه بسلسلة SHA-256.')),
+                  );
+                }
+              },
+              child: Text(store.t('save')),
+            ),
+          ],
+        ),
       ),
     );
   }

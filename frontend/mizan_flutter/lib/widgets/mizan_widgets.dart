@@ -1,169 +1,153 @@
 import 'package:flutter/material.dart';
 import '../theme/mizan_theme.dart';
 
-class MizanCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final Color? color;
-  final VoidCallback? onTap;
-
-  const MizanCard({
-    super.key,
-    required this.child,
-    this.padding = const EdgeInsets.all(16),
-    this.color,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = color ?? (isDark ? MizanColors.surfaceDark : MizanColors.surfaceLight);
-    final border = isDark ? MizanColors.borderDark : MizanColors.borderLight;
-    final box = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: border, width: 1),
-      ),
-      child: child,
-    );
-    if (onTap == null) return box;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: box,
-      ),
-    );
-  }
-}
-
-class KpiTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final String? badge;
-  final IconData icon;
-  final Color color;
-  final VoidCallback? onTap;
-
-  const KpiTile({
-    super.key,
-    required this.label,
-    required this.value,
-    this.badge,
-    required this.icon,
-    required this.color,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return MizanCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const Spacer(),
-              if (badge != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: Text(
-                    badge!,
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12.5, color: MizanColors.muted, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class QuickActionTile extends StatelessWidget {
+class MizanKpiCard extends StatelessWidget {
   final String title;
+  final String value;
+  final String? subtitle;
   final IconData icon;
   final Color color;
-  final VoidCallback onTap;
 
-  const QuickActionTile({
+  const MizanKpiCard({
     super.key,
     required this.title,
+    required this.value,
+    this.subtitle,
     required this.icon,
     required this.color,
-    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return MizanCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(14),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: color),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: MizanColors.muted,
+                          fontWeight: FontWeight.w600,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                subtitle!,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: MizanColors.muted,
+                    ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-String fmtMoney(double v, [String currency = 'USD']) {
-  final neg = v < 0;
-  final abs = v.abs().toStringAsFixed(2);
-  return '${neg ? "-" : ""}$abs $currency';
+class MizanBadge extends StatelessWidget {
+  final String text;
+  final Color color;
+
+  const MizanBadge({super.key, required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+      ),
+    );
+  }
 }
 
-String fmtDate(DateTime d) {
-  final mm = d.month.toString().padLeft(2, '0');
-  final dd = d.day.toString().padLeft(2, '0');
-  final hh = d.hour.toString().padLeft(2, '0');
-  final mn = d.minute.toString().padLeft(2, '0');
-  return '${d.year}/$mm/$dd $hh:$mn';
+/// Deterministic visual QR matrix widget (zero native dependencies).
+class MizanVisualQrBox extends StatelessWidget {
+  final String data;
+  final double size;
+
+  const MizanVisualQrBox({super.key, required this.data, this.size = 110});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: MizanColors.borderLight),
+      ),
+      child: CustomPaint(painter: _QrMatrixPainter(data)),
+    );
+  }
+}
+
+class _QrMatrixPainter extends CustomPainter {
+  final String data;
+  _QrMatrixPainter(this.data);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const int n = 15;
+    final cell = size.width / n;
+    final paint = Paint()..color = const Color(0xFF0F172A);
+    int hash = 2166136261;
+    for (final c in data.codeUnits) {
+      hash ^= c;
+      hash = (hash * 16777619) & 0xffffffff;
+    }
+
+    for (int r = 0; r < n; r++) {
+      for (int c = 0; c < n; c++) {
+        final inTopLeft = r < 4 && c < 4;
+        final inTopRight = r < 4 && c >= n - 4;
+        final inBottomLeft = r >= n - 4 && c < 4;
+        bool fill = false;
+        if (inTopLeft || inTopRight || inBottomLeft) {
+          final rr = r >= n - 4 ? r - (n - 4) : r;
+          final cc = c >= n - 4 ? c - (n - 4) : c;
+          fill = rr == 0 || rr == 3 || cc == 0 || cc == 3 || (rr == 1 && cc == 1) || (rr == 2 && cc == 2);
+        } else {
+          final bit = ((hash >> ((r * n + c) % 31)) ^ (r * 7 + c * 13)) & 1;
+          fill = bit == 1;
+        }
+        if (fill) {
+          canvas.drawRect(Rect.fromLTWH(c * cell, r * cell, cell, cell), paint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _QrMatrixPainter oldDelegate) => oldDelegate.data != data;
 }

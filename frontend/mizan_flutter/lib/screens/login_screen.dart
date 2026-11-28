@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../l10n/mizan_l10n.dart';
 import '../state/mizan_store.dart';
 import '../theme/mizan_theme.dart';
-import '../widgets/mizan_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
   final MizanStore store;
@@ -12,123 +12,79 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailCtrl = TextEditingController(text: 'owner@seha-pilot.local');
-  final _passCtrl = TextEditingController();
-  String _role = 'OWNER — مالك المنشأة';
+  late final TextEditingController _emailCtrl;
 
-  final _roles = const [
-    'OWNER — مالك المنشأة',
-    'ACCOUNTANT — محاسب مالي',
-    'CASHIER — أمين صندوق / كاشير',
-    'DISTRIBUTOR — موزع ميداني',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _emailCtrl = TextEditingController(text: widget.store.currentUserEmail);
+  }
 
   @override
   void dispose() {
     _emailCtrl.dispose();
-    _passCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = widget.store;
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [MizanColors.primaryDark, MizanColors.primary],
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: const Icon(Icons.balance_rounded, color: Colors.white, size: 42),
-                        ),
-                        const SizedBox(height: 14),
-                        const Text(
-                          'ميزان v3.2',
-                          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'لكل عملية سجل، ولكل رصيد دليل',
-                          style: TextStyle(color: Color(0xFFD9F2EC), fontSize: 13.5),
-                        ),
-                      ],
+                  const Icon(Icons.balance_rounded, size: 64, color: MizanColors.primary),
+                  const SizedBox(height: 16),
+                  Text(
+                    s.t('app_title'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    s.t('login_subtitle'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: MizanColors.muted),
+                  ),
+                  const SizedBox(height: 24),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: MizanL10n.supported.map((lang) {
+                      final selected = lang.code == s.languageCode;
+                      return ChoiceChip(
+                        label: Text(lang.nativeName),
+                        selected: selected,
+                        onSelected: (_) => s.setLanguage(lang.code),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _emailCtrl,
+                    decoration: InputDecoration(
+                      labelText: s.t('email'),
+                      prefixIcon: const Icon(Icons.person_outline),
                     ),
                   ),
-                  const SizedBox(height: 22),
-                  MizanCard(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextField(
-                          controller: _emailCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'البريد الإلكتروني أو رقم الهاتف',
-                            prefixIcon: Icon(Icons.person_outline_rounded),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _passCtrl,
-                          obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: 'كلمة المرور',
-                            prefixIcon: Icon(Icons.lock_outline_rounded),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          value: _role,
-                          decoration: const InputDecoration(
-                            labelText: 'الدور الوظيفي',
-                            prefixIcon: Icon(Icons.verified_user_outlined),
-                          ),
-                          items: _roles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                          onChanged: (v) => setState(() => _role = v ?? _role),
-                        ),
-                        const SizedBox(height: 18),
-                        FilledButton.icon(
-                          onPressed: () => widget.store.login(
-                            email: _emailCtrl.text.trim(),
-                            role: _role,
-                            offline: false,
-                          ),
-                          icon: const Icon(Icons.login_rounded),
-                          label: const Text('دخول للنظام'),
-                        ),
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          onPressed: () => widget.store.login(
-                            email: _emailCtrl.text.trim(),
-                            role: _role,
-                            offline: true,
-                          ),
-                          icon: const Icon(Icons.bolt_rounded),
-                          label: const Text('دخول مباشر بوضع الأوفلاين الميداني'),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () => s.login(_emailCtrl.text),
+                    icon: const Icon(Icons.login_rounded),
+                    label: Text(s.t('login_btn')),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${s.t('sqlite_active')} (${s.activeSqliteTables})',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: MizanColors.success, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
